@@ -10,7 +10,7 @@ set -euo pipefail
 # BW_CLIENTSECRET
 # BW_PASSWORD
 
-GITHUB_ORG="${GITHUB_ORG:-le-infra}"
+GITHUB_ORG="${GITHUB_ORG:-prabhakarjee}"
 GITHUB_REPO="le-platform-core"
 INSTALL_DIR="/opt/platform"
 
