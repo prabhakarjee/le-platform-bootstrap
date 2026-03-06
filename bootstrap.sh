@@ -98,7 +98,7 @@ fi
 
 # 7. Fetch GitHub PAT
 echo "📂 Fetching GitHub PAT..."
-GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.notes // .login.password')
+GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.notes // .login.password' | xargs)
 
 if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "null" ]]; then
     echo "❌ Failed to fetch 'Infra GitHub PAT' from Bitwarden."
@@ -107,8 +107,9 @@ fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-# Use the token in the URL for the initial clone
-git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
+# Use Authorization header to avoid URL malformation with special characters in token
+git clone "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR" \
+    -c "http.https://github.com/.extraheader=Authorization: Basic $(echo -n "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
