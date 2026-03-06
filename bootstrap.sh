@@ -52,7 +52,7 @@ echo "📦 Updating OS and installing core tools..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get upgrade -y -qq
-apt-get install -y -qq curl git jq ufw unzip gpg > /dev/null 2>&1
+apt-get install -y -qq curl git jq yq ufw unzip gpg > /dev/null 2>&1
 
 # 2. Install Docker
 if ! command -v docker &>/dev/null; then
