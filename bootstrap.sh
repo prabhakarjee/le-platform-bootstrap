@@ -88,7 +88,11 @@ fi
 echo "🔑 Unlocking Bitwarden vault..."
 export BW_CLIENTID="${BW_CLIENTID}"
 export BW_CLIENTSECRET="${BW_CLIENTSECRET}"
-bw login --apikey
+
+# Only login if unauthenticated
+if [[ "$(bw status | jq -r .status)" == "unauthenticated" ]]; then
+    bw login --apikey
+fi
 
 export BW_SESSION=$(bw unlock "${BW_PASSWORD}" --raw)
 if [[ -z "${BW_SESSION}" ]]; then
