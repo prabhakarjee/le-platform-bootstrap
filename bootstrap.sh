@@ -110,11 +110,11 @@ fi
 
 # 6. Fetch Infrastructure Secrets
 echo "📂 Fetching infrastructure secrets..."
-GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.notes // .login.password' | xargs)
-TAILSCALE_KEY=$(bw get item "Infra Tailscale Auth Key" | jq -r '.notes // .login.password' | xargs)
+GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r 'if .notes != null and .notes != "" then .notes else .login.password end' | xargs | tr -d '\r')
+TAILSCALE_KEY=$(bw get item "Infra Tailscale Auth Key" | jq -r 'if .notes != null and .notes != "" then .notes else .login.password end' | xargs | tr -d '\r')
 
 if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "null" ]]; then
-    echo "❌ Failed to fetch 'Infra GitHub PAT' from Bitwarden."
+    echo "❌ Failed to fetch 'Infra GitHub PAT' from Bitwarden (Note or Password field required)."
     exit 1
 fi
 
@@ -126,7 +126,7 @@ fi
 if ! command -v tailscale &>/dev/null; then
     echo "🔗 Installing Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | bash
-    if [[ -n "$TAILSCALE_KEY" ]]; then
+    if [[ -n "$TAILSCALE_KEY" && "$TAILSCALE_KEY" != "null" ]]; then
         tailscale up --authkey "${TAILSCALE_KEY}"
     else
         echo "ℹ️  Run 'tailscale up' manually to authenticate."
@@ -135,16 +135,14 @@ fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-# Use a temporary credential helper to avoid URL malformation or prompt issues
-git config --global credential.helper "store --file=/tmp/git-credentials"
-echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > /tmp/git-credentials
+# Use insteadOf to inject the token into the URL automatically and robustly
+git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
 # Perform the clone
 git clone "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
 
-# Cleanup credentials immediately
-git config --global --unset credential.helper
-rm -f /tmp/git-credentials
+# Cleanup config
+git config --global --unset url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
