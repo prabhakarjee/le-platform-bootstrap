@@ -135,20 +135,16 @@ fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-# Create a temporary askpass script to handle authentication securely
-ASKPASS_SCRIPT="/tmp/git-askpass.sh"
-cat <<EOF > "$ASKPASS_SCRIPT"
-#!/usr/bin/env bash
-echo "${GITHUB_TOKEN}"
-EOF
-chmod +x "$ASKPASS_SCRIPT"
+# Use a temporary credential helper to avoid URL malformation or prompt issues
+git config --global credential.helper "store --file=/tmp/git-credentials"
+echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > /tmp/git-credentials
 
-# Run clone with ASKPASS
-export GIT_ASKPASS="$ASKPASS_SCRIPT"
-export GIT_TERMINAL_PROMPT=0
-git clone "https://x-access-token@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
-unset GIT_ASKPASS
-rm -f "$ASKPASS_SCRIPT"
+# Perform the clone
+git clone "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
+
+# Cleanup credentials immediately
+git config --global --unset credential.helper
+rm -f /tmp/git-credentials
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
