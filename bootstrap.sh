@@ -29,7 +29,10 @@ prompt_secret() {
     local var_name="$1"
     local prompt_msg="$2"
     if [[ -z "${!var_name:-}" ]]; then
+        local input_val
         read -rsp "$prompt_msg: " input_val </dev/tty
+        # Trim all whitespace and carriage returns
+        input_val=$(echo "$input_val" | xargs | tr -d '\r')
         echo "" # New line after silent read
         if [[ -z "$input_val" ]]; then
             echo "❌ $var_name cannot be empty."
@@ -53,7 +56,8 @@ if [[ "$BW_STATUS" == "unauthenticated" ]]; then
     prompt_secret "BW_CLIENTSECRET"  "Enter Bitwarden Client Secret"
 fi
 
-if [[ "$BW_STATUS" == "unauthenticated" || "$BW_STATUS" == "locked" ]]; then
+# Always double check ID/Secret if we might need to login
+if [[ "$BW_STATUS" != "unlocked" ]]; then
     prompt_secret "BW_PASSWORD"      "Enter Bitwarden Master Password"
 fi
 echo "✅ Credentials captured."
