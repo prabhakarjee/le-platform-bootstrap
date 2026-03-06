@@ -40,10 +40,13 @@ prompt_secret() {
 }
 
 echo "📝 Checking existing authentication status..."
-BW_STATUS=$(bw status | jq -r .status 2>/dev/null || echo "unauthenticated")
+# Ensure curl is installed before checking status
+if ! command -v curl &>/dev/null; then
+    apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
+fi
+BW_STATUS=$(bw status 2>/dev/null | jq -r .status 2>/dev/null || echo "unauthenticated")
 
-echo "📝 Please enter the required foundation secrets:"
-prompt_secret "TAILSCALE_AUTHKEY" "Enter Tailscale Auth Key"
+echo "📝 Please enter the required Bitwarden secrets:"
 
 if [[ "$BW_STATUS" == "unauthenticated" ]]; then
     prompt_secret "BW_CLIENTID"      "Enter Bitwarden Client ID"
@@ -76,14 +79,7 @@ if ! command -v rclone &>/dev/null; then
     curl -fsSL https://rclone.org/install.sh | bash
 fi
 
-# 4. Install Tailscale
-if ! command -v tailscale &>/dev/null; then
-    echo "🔗 Installing Tailscale..."
-    curl -fsSL https://tailscale.com/install.sh | bash
-    tailscale up --authkey "${TAILSCALE_AUTHKEY}"
-fi
-
-# 5. Install Bitwarden CLI
+# 4. Install Bitwarden CLI
 if ! command -v bw &>/dev/null; then
     echo "🔐 Installing Bitwarden CLI..."
     BW_URL="https://vault.bitwarden.com/download/?app=cli&platform=linux"
@@ -93,12 +89,11 @@ if ! command -v bw &>/dev/null; then
     rm -f /tmp/bw.zip
 fi
 
-# 6. Authenticate with Bitwarden
+# 5. Authenticate and Unlock Bitwarden
 echo "🔑 Unlocking Bitwarden vault..."
-export BW_CLIENTID="${BW_CLIENTID}"
-export BW_CLIENTSECRET="${BW_CLIENTSECRET}"
+export BW_CLIENTID="${BW_CLIENTID:-}"
+export BW_CLIENTSECRET="${BW_CLIENTSECRET:-}"
 
-# Only login if unauthenticated
 if [[ "$(bw status | jq -r .status)" == "unauthenticated" ]]; then
     bw login --apikey
 fi
@@ -109,18 +104,33 @@ if [[ -z "${BW_SESSION}" ]]; then
     exit 1
 fi
 
-# 7. Fetch GitHub PAT
-echo "📂 Fetching GitHub PAT..."
+# 6. Fetch Infrastructure Secrets
+echo "📂 Fetching infrastructure secrets..."
 GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.notes // .login.password' | xargs)
+TAILSCALE_KEY=$(bw get item "Infra Tailscale Auth Key" | jq -r '.notes // .login.password' | xargs)
 
 if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "null" ]]; then
     echo "❌ Failed to fetch 'Infra GitHub PAT' from Bitwarden."
     exit 1
 fi
 
+if [[ -z "$TAILSCALE_KEY" || "$TAILSCALE_KEY" == "null" ]]; then
+    echo "⚠️  Failed to fetch 'Infra Tailscale Auth Key' from Bitwarden. Tailscale may require manual login."
+fi
+
+# 7. Install and Setup Tailscale
+if ! command -v tailscale &>/dev/null; then
+    echo "🔗 Installing Tailscale..."
+    curl -fsSL https://tailscale.com/install.sh | bash
+    if [[ -n "$TAILSCALE_KEY" ]]; then
+        tailscale up --authkey "${TAILSCALE_KEY}"
+    else
+        echo "ℹ️  Run 'tailscale up' manually to authenticate."
+    fi
+fi
+
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-# Use Authorization header to avoid URL malformation with special characters in token
 git clone "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR" \
     -c "http.https://github.com/.extraheader=Authorization: Basic $(echo -n "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
 
