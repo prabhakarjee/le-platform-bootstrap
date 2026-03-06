@@ -108,6 +108,9 @@ if [[ -z "${BW_SESSION}" ]]; then
     exit 1
 fi
 
+echo "🔄 Syncing Bitwarden vault..."
+bw sync
+
 # 6. Fetch Infrastructure Secrets
 echo "📂 Fetching infrastructure secrets..."
 GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.login.password' | xargs | tr -d '\r')
