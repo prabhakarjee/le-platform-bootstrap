@@ -96,22 +96,19 @@ if [[ -z "${BW_SESSION}" ]]; then
     exit 1
 fi
 
-# 7. Setup GitHub Deploy Key
-echo "📂 Fetching GitHub Deploy Key..."
-mkdir -p /root/.ssh
-chmod 700 /root/.ssh
+# 7. Fetch GitHub PAT
+echo "📂 Fetching GitHub PAT..."
+GITHUB_TOKEN=$(bw get item "platform/github-token" | jq -r '.notes // .login.password')
 
-# Assuming deploy key is in 'platform/github-deploy-key' (notes field)
-bw get item "platform/github-deploy-key" | jq -r '.notes' > /root/.ssh/id_platform
-chmod 600 /root/.ssh/id_platform
-
-# Add github to known_hosts
-ssh-keyscan github.com >> /root/.ssh/known_hosts
+if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "null" ]]; then
+    echo "❌ Failed to fetch platform/github-token from Bitwarden."
+    exit 1
+fi
 
 # 8. Clone Private Core Repo
-echo "📦 Cloning private platform core..."
-GIT_SSH_COMMAND="ssh -i /root/.ssh/id_platform -o StrictHostKeyChecking=no" \
-    git clone "git@github.com:${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
+echo "📦 Cloning private platform core via HTTPS..."
+# Use the token in the URL for the initial clone
+git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
