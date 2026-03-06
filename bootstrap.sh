@@ -122,6 +122,10 @@ if [[ -z "$TAILSCALE_KEY" || "$TAILSCALE_KEY" == "null" ]]; then
     echo "⚠️  Failed to fetch 'Infra Tailscale Auth Key' from Bitwarden. Tailscale may require manual login."
 fi
 
+# Print safe debug info about the token
+echo "🔍 Debug: PAT length is ${#GITHUB_TOKEN} characters."
+echo "🔍 Debug: PAT starts with '${GITHUB_TOKEN:0:4}' and ends with '${GITHUB_TOKEN: -4}'"
+
 # 7. Install and Setup Tailscale
 if ! command -v tailscale &>/dev/null; then
     echo "🔗 Installing Tailscale..."
@@ -135,14 +139,9 @@ fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-# Use insteadOf to inject the token into the URL automatically and robustly
-git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
-# Perform the clone
-git clone "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
-
-# Cleanup config
-git config --global --unset url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf
+# Perform the clone using token directly in URL (most standard way for PATs)
+git clone "https://${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
