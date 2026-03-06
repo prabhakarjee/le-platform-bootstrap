@@ -29,7 +29,7 @@ prompt_secret() {
     local var_name="$1"
     local prompt_msg="$2"
     if [[ -z "${!var_name:-}" ]]; then
-        read -rsp "$prompt_msg: " input_val
+        read -rsp "$prompt_msg: " input_val </dev/tty
         echo "" # New line after silent read
         if [[ -z "$input_val" ]]; then
             echo "❌ $var_name cannot be empty."
