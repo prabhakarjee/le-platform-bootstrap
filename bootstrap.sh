@@ -135,8 +135,20 @@ fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-git clone "https://github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR" \
-    -c "http.https://github.com/.extraheader=Authorization: Basic $(echo -n "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+# Create a temporary askpass script to handle authentication securely
+ASKPASS_SCRIPT="/tmp/git-askpass.sh"
+cat <<EOF > "$ASKPASS_SCRIPT"
+#!/usr/bin/env bash
+echo "${GITHUB_TOKEN}"
+EOF
+chmod +x "$ASKPASS_SCRIPT"
+
+# Run clone with ASKPASS
+export GIT_ASKPASS="$ASKPASS_SCRIPT"
+export GIT_TERMINAL_PROMPT=0
+git clone "https://x-access-token@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
+unset GIT_ASKPASS
+rm -f "$ASKPASS_SCRIPT"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
