@@ -98,10 +98,10 @@ fi
 
 # 7. Fetch GitHub PAT
 echo "📂 Fetching GitHub PAT..."
-GITHUB_TOKEN=$(bw get item "platform/github-token" | jq -r '.notes // .login.password')
+GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.notes // .login.password')
 
 if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "null" ]]; then
-    echo "❌ Failed to fetch platform/github-token from Bitwarden."
+    echo "❌ Failed to fetch 'Infra GitHub PAT' from Bitwarden."
     exit 1
 fi
 
