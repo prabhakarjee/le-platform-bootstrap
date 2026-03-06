@@ -39,11 +39,20 @@ prompt_secret() {
     fi
 }
 
+echo "📝 Checking existing authentication status..."
+BW_STATUS=$(bw status | jq -r .status 2>/dev/null || echo "unauthenticated")
+
 echo "📝 Please enter the required foundation secrets:"
 prompt_secret "TAILSCALE_AUTHKEY" "Enter Tailscale Auth Key"
-prompt_secret "BW_CLIENTID"      "Enter Bitwarden Client ID"
-prompt_secret "BW_CLIENTSECRET"  "Enter Bitwarden Client Secret"
-prompt_secret "BW_PASSWORD"      "Enter Bitwarden Master Password"
+
+if [[ "$BW_STATUS" == "unauthenticated" ]]; then
+    prompt_secret "BW_CLIENTID"      "Enter Bitwarden Client ID"
+    prompt_secret "BW_CLIENTSECRET"  "Enter Bitwarden Client Secret"
+fi
+
+if [[ "$BW_STATUS" == "unauthenticated" || "$BW_STATUS" == "locked" ]]; then
+    prompt_secret "BW_PASSWORD"      "Enter Bitwarden Master Password"
+fi
 echo "✅ Credentials captured."
 echo ""
 
