@@ -110,8 +110,8 @@ fi
 
 # 6. Fetch Infrastructure Secrets
 echo "📂 Fetching infrastructure secrets..."
-GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r 'if .notes != null and .notes != "" then .notes else .login.password end' | xargs | tr -d '\r')
-TAILSCALE_KEY=$(bw get item "Infra Tailscale Auth Key" | jq -r 'if .notes != null and .notes != "" then .notes else .login.password end' | xargs | tr -d '\r')
+GITHUB_TOKEN=$(bw get item "Infra GitHub PAT" | jq -r '.login.password' | xargs | tr -d '\r')
+TAILSCALE_KEY=$(bw get item "Infra Tailscale Auth Key" | jq -r '.login.password' | xargs | tr -d '\r')
 
 if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "null" ]]; then
     echo "❌ Failed to fetch 'Infra GitHub PAT' from Bitwarden (Note or Password field required)."
