@@ -143,8 +143,8 @@ fi
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
 
-# Perform the clone using token directly in URL (most standard way for PATs)
-git clone "https://${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
+# Perform the clone using x-access-token format (standard for PATs)
+git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
