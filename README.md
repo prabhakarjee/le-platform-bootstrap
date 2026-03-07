@@ -6,7 +6,7 @@ This repository is the entry point for the "Zero-Touch" platform installation. I
 
 To start a fresh bootstrap:
 ```bash
-curl -sSL https://raw.githubusercontent.com/prabhakarjee/le-platform-bootstrap/master/bootstrap.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/prabhakarjee/le-platform-bootstrap/main/bootstrap.sh | sudo bash
 ```
 
 ## 🔐 Bitwarden Secrets (Required)
