@@ -11,14 +11,17 @@ curl -sSL https://raw.githubusercontent.com/prabhakarjee/le-platform-bootstrap/m
 
 ## 🔐 Bitwarden Secrets (Required)
 
-Before running the bootstrap, ensure your Bitwarden vault contains these items. The script will prompt for the Master Password and API credentials to fetch the rest.
+Before running the bootstrap, ensure your Bitwarden vault contains these items. For optimal organization, we recommend using folders like **`BootStrap-1`** and **`Bootstrap-2`** (or your existing structure). 
 
-| Bitwarden Item Name | Key/Field | Description |
+| Bitwarden Item Name | Key/Field | Purpose |
 | :--- | :--- | :--- |
-| **`Infra GitHub PAT`** | Password | Personal Access Token with repo scope for cloning private repos. |
-| **`Infra Tailscale Auth Key`** | Password | Auth key from Tailscale dashboard for mesh networking. |
-| **`Infra Backup Key`** | Password | Master passphrase used for GPG encryption and Postgres. |
-| **`Infra Bootstrap Env`** | Notes | Must contain `PRIMARY_DOMAIN=yourdomain.com`. |
+| **`Infra GitHub PAT`** | Password | Token for cloning private repositories. |
+| **`Infra Tailscale Auth Key`** | Password | Auth key from Tailscale dashboard. |
+| **`Infra Backup Key`** | Password | Passphrase for GPG encryption & Postgres. |
+| **`Infra Bootstrap Env`** | Notes | Master config (e.g., `PRIMARY_DOMAIN`). |
+| **`Infra R2`** | Custom Fields | R2 credentials for the initial sync. |
+
+The script will prompt you for your **Client ID**, **Client Secret**, and **Master Password** at runtime if not provided via environment variables.
 
 ## ⚙️ What it does
 1.  **System Prep**: Updates OS, installs Docker, rclone, and Bitwarden CLI.
