@@ -130,28 +130,56 @@ echo "🔍 Debug: PAT length is ${#GITHUB_TOKEN} characters."
 echo "🔍 Debug: PAT starts with '${GITHUB_TOKEN:0:4}' and ends with '${GITHUB_TOKEN: -4}'"
 
 # 7. Install and Setup Tailscale
+echo "🔗 Configuring Tailscale..."
 if ! command -v tailscale &>/dev/null; then
-    echo "🔗 Installing Tailscale..."
+    echo "📦 Installing Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | bash
-    if [[ -n "$TAILSCALE_KEY" && "$TAILSCALE_KEY" != "null" ]]; then
-        tailscale up --authkey "${TAILSCALE_KEY}"
-    else
-        echo "ℹ️  Run 'tailscale up' manually to authenticate."
-    fi
+fi
+
+# Fetch Domain for Hostname (needed for Tailscale identity)
+PLATFORM_ENV_NOTE=$(bw get item "Infra Bootstrap Env" | jq -r '.notes' || echo "")
+PLATFORM_DOMAIN=$(echo "$PLATFORM_ENV_NOTE" | grep "PRIMARY_DOMAIN=" | cut -d'=' -f2 | xargs || echo "le-vps")
+SHORT_HOSTNAME=$(echo "$PLATFORM_DOMAIN" | cut -d'.' -f1)
+
+echo "🏷️  Setting system hostname to: $SHORT_HOSTNAME"
+hostnamectl set-hostname "$SHORT_HOSTNAME"
+echo "127.0.0.1 $SHORT_HOSTNAME" >> /etc/hosts
+
+if [[ -n "$TAILSCALE_KEY" && "$TAILSCALE_KEY" != "null" ]]; then
+    echo "🔑 Authenticating with Tailscale..."
+    tailscale up --authkey "${TAILSCALE_KEY}" --hostname "${SHORT_HOSTNAME}" --accept-routes
+else
+    echo "ℹ️  Run 'tailscale up' manually to authenticate."
 fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
 
 # Perform the clone using x-access-token format (standard for PATs)
+rm -rf "$INSTALL_DIR"
 git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
 bash "$INSTALL_DIR/bootstrap/platform-init.sh"
 
+# 10. Success Guidance
+TS_IP=$(tailscale ip -4 | head -n 1 || echo "unknown")
+
 echo ""
-echo "╔════════════════════════════════════════════╗"
-echo "║   Bootstrap Phase 1 Complete.             ║"
-echo "║   Platform is now initializing...         ║"
-echo "╚════════════════════════════════════════════╝"
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║ 🎉 LE-Platform Bootstrap Phase 1 & 2 Complete!             ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+echo "✅ System Hostname: $SHORT_HOSTNAME"
+echo "✅ Tailscale IP:    $TS_IP"
+echo ""
+echo "🚀 Next Steps:"
+echo "1. Log out of this root session."
+echo "2. Log back in via Tailscale SSH for better security:"
+echo "   ssh root@$TS_IP"
+echo ""
+echo "3. Add your first app:"
+echo "   platform app add uptime-kuma"
+echo ""
+echo "--------------------------------------------------------------"
