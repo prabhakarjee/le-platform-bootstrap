@@ -130,56 +130,95 @@ echo "🔍 Debug: PAT length is ${#GITHUB_TOKEN} characters."
 echo "🔍 Debug: PAT starts with '${GITHUB_TOKEN:0:4}' and ends with '${GITHUB_TOKEN: -4}'"
 
 # 7. Install and Setup Tailscale
-echo "🔗 Configuring Tailscale..."
+echo "🔗 Configuring system identity and security..."
+
+# Fetch Advanced Bootstrap Env from Bitwarden
+BOOTSTRAP_ENV=$(bw get item "Infra Bootstrap Env" | jq -r '.notes' || echo "")
+
+# 1. System Localization (Timezone)
+TARGET_TZ=$(echo "$BOOTSTRAP_ENV" | grep "^TZ=" | cut -d'=' -f2 | xargs || echo "Asia/Kolkata")
+echo "🕒 Setting timezone to: $TARGET_TZ"
+timedatectl set-timezone "$TARGET_TZ" || true
+
+# 2. System Identity (Hostname)
+# Preference: VPS_HOSTNAME > Domain Prefix > default
+TARGET_HOSTNAME=$(echo "$BOOTSTRAP_ENV" | grep "^VPS_HOSTNAME=" | cut -d'=' -f2 | xargs || echo "")
+if [[ -z "$TARGET_HOSTNAME" ]]; then
+    PRIMARY_DOMAIN=$(echo "$BOOTSTRAP_ENV" | grep "^PRIMARY_DOMAIN=" | cut -d'=' -f2 | xargs || echo "le-vps")
+    TARGET_HOSTNAME=$(echo "$PRIMARY_DOMAIN" | cut -d'.' -f1)
+fi
+
+echo "🏷️  Setting system hostname to: $TARGET_HOSTNAME"
+hostnamectl set-hostname "$TARGET_HOSTNAME"
+echo "127.0.0.1 $TARGET_HOSTNAME" >> /etc/hosts
+
+# 3. Security (Create Deploy User)
+DEPLOY_PASS=$(echo "$BOOTSTRAP_ENV" | grep "^DEPLOY_USER_PASSWORD=" | cut -d'=' -f2 | xargs || echo "")
+
+if [[ -n "$DEPLOY_PASS" ]]; then
+    if ! id "deploy" &>/dev/null; then
+        echo "👤 Creating 'deploy' user..."
+        useradd -m -s /bin/bash deploy
+        echo "deploy:$DEPLOY_PASS" | chpasswd
+        usermod -aG sudo,docker deploy
+        # Allow sudo without password for deploy user (automation friendly)
+        echo "deploy ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/deploy
+        
+        # Setup path in .bashrc
+        echo 'export PATH=$PATH:/opt/platform/bin' >> /home/deploy/.bashrc
+        mkdir -p /home/deploy/.ssh && chmod 700 /home/deploy/.ssh
+        cp /root/.ssh/authorized_keys /home/deploy/.ssh/authorized_keys 2>/dev/null || true
+        chown -R deploy:deploy /home/deploy/.ssh
+    else
+        echo "ℹ️  'deploy' user already exists."
+    fi
+fi
+
+# 4. Tailscale Integration
 if ! command -v tailscale &>/dev/null; then
     echo "📦 Installing Tailscale..."
     curl -fsSL https://tailscale.com/install.sh | bash
 fi
 
-# Fetch Domain for Hostname (needed for Tailscale identity)
-PLATFORM_ENV_NOTE=$(bw get item "Infra Bootstrap Env" | jq -r '.notes' || echo "")
-PLATFORM_DOMAIN=$(echo "$PLATFORM_ENV_NOTE" | grep "PRIMARY_DOMAIN=" | cut -d'=' -f2 | xargs || echo "le-vps")
-SHORT_HOSTNAME=$(echo "$PLATFORM_DOMAIN" | cut -d'.' -f1)
-
-echo "🏷️  Setting system hostname to: $SHORT_HOSTNAME"
-hostnamectl set-hostname "$SHORT_HOSTNAME"
-echo "127.0.0.1 $SHORT_HOSTNAME" >> /etc/hosts
-
 if [[ -n "$TAILSCALE_KEY" && "$TAILSCALE_KEY" != "null" ]]; then
     echo "🔑 Authenticating with Tailscale..."
-    tailscale up --authkey "${TAILSCALE_KEY}" --hostname "${SHORT_HOSTNAME}" --accept-routes
+    tailscale up --authkey "${TAILSCALE_KEY}" --hostname "${TARGET_HOSTNAME}" --accept-routes --ssh
 else
     echo "ℹ️  Run 'tailscale up' manually to authenticate."
 fi
 
 # 8. Clone Private Core Repo
 echo "📦 Cloning private platform core via HTTPS..."
-
-# Perform the clone using x-access-token format (standard for PATs)
 rm -rf "$INSTALL_DIR"
 git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${GITHUB_REPO}.git" "$INSTALL_DIR"
 
 # 9. Trigger Platform Initialization
 echo "🚀 Triggering Platform Initialization..."
+# Pass the session to init so it doesn't have to re-auth
+export BW_SESSION="$BW_SESSION"
 bash "$INSTALL_DIR/bootstrap/platform-init.sh"
 
 # 10. Success Guidance
 TS_IP=$(tailscale ip -4 | head -n 1 || echo "unknown")
+SSH_USER="root"
+[[ -n "$DEPLOY_PASS" ]] && SSH_USER="deploy"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║ 🎉 LE-Platform Bootstrap Phase 1 & 2 Complete!             ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
-echo "✅ System Hostname: $SHORT_HOSTNAME"
+echo "✅ System Hostname: $TARGET_HOSTNAME"
+echo "✅ Timezone:        $TARGET_TZ"
 echo "✅ Tailscale IP:    $TS_IP"
+[[ -n "$DEPLOY_PASS" ]] && echo "✅ User Provisioned: $SSH_USER"
 echo ""
 echo "🚀 Next Steps:"
 echo "1. Log out of this root session."
 echo "2. Log back in via Tailscale SSH for better security:"
-echo "   ssh root@$TS_IP"
+echo "   ssh $SSH_USER@$TS_IP"
 echo ""
-echo "3. Add your first app:"
+echo "3. Add your first app (optional if auto-provisioned):"
 echo "   platform app add uptime-kuma"
 echo ""
 echo "--------------------------------------------------------------"
