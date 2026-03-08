@@ -63,6 +63,16 @@ fi
 echo "✅ Credentials captured."
 echo ""
 
+# Persist identity for future "Zero-Touch" operations
+# This stores ONLY the Client ID and Secret, NOT the Master Password.
+mkdir -p /opt/platform/config
+cat <<EOF > /opt/platform/config/bw.identity
+export BW_CLIENTID="$BW_CLIENTID"
+export BW_CLIENTSECRET="$BW_CLIENTSECRET"
+EOF
+chmod 600 /opt/platform/config/bw.identity
+chown root:root /opt/platform/config/bw.identity 2>/dev/null || true
+
 # 1. Update OS and Install Core Tools
 echo "📦 Updating OS and installing core tools..."
 export DEBIAN_FRONTEND=noninteractive
