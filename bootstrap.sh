@@ -153,11 +153,11 @@ R2_ACCESS_KEY=$(echo "$R2_ITEM" | jq -r '.fields[]? | select(.name == "R2_ACCESS
 R2_SECRET_KEY=$(echo "$R2_ITEM" | jq -r '.fields[]? | select(.name == "R2_SECRET_ACCESS_KEY") | .value' || echo "")
 
 cat <<EOF > /opt/platform/config/infra.env
-export GPG_PASS="$GPG_PASS"
-export R2_ENDPOINT="$R2_ENDPOINT"
-export R2_BUCKET="$R2_BUCKET"
-export R2_ACCESS_KEY="$R2_ACCESS_KEY"
-export R2_SECRET_KEY="$R2_SECRET_KEY"
+export GPG_PASS='$GPG_PASS'
+export R2_ENDPOINT='$R2_ENDPOINT'
+export R2_BUCKET='$R2_BUCKET'
+export R2_ACCESS_KEY='$R2_ACCESS_KEY'
+export R2_SECRET_KEY='$R2_SECRET_KEY'
 EOF
 chmod 600 /opt/platform/config/infra.env
 if id "deploy" &>/dev/null; then
