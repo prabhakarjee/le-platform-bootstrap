@@ -143,6 +143,29 @@ fi
 echo "🔍 Debug: PAT length is ${#GITHUB_TOKEN} characters."
 echo "🔍 Debug: PAT starts with '${GITHUB_TOKEN:0:4}' and ends with '${GITHUB_TOKEN: -4}'"
 
+# 6.5 Cache Derived Credentials for Automation (Zero-Touch)
+echo "🔒 Caching derived credentials for automation..."
+GPG_PASS=$(bw get item "Infra Backup Key" | jq -r '.login.password' || echo "")
+R2_ITEM=$(bw get item "Infra R2" 2>/dev/null || echo "")
+R2_ENDPOINT=$(echo "$R2_ITEM" | jq -r '.fields[]? | select(.name == "R2_ENDPOINT") | .value' || echo "")
+R2_BUCKET=$(echo "$R2_ITEM" | jq -r '.fields[]? | select(.name == "R2_BUCKET") | .value' || echo "")
+R2_ACCESS_KEY=$(echo "$R2_ITEM" | jq -r '.fields[]? | select(.name == "R2_ACCESS_KEY_ID") | .value' || echo "")
+R2_SECRET_KEY=$(echo "$R2_ITEM" | jq -r '.fields[]? | select(.name == "R2_SECRET_ACCESS_KEY") | .value' || echo "")
+
+cat <<EOF > /opt/platform/config/infra.env
+export GPG_PASS="$GPG_PASS"
+export R2_ENDPOINT="$R2_ENDPOINT"
+export R2_BUCKET="$R2_BUCKET"
+export R2_ACCESS_KEY="$R2_ACCESS_KEY"
+export R2_SECRET_KEY="$R2_SECRET_KEY"
+EOF
+chmod 600 /opt/platform/config/infra.env
+if id "deploy" &>/dev/null; then
+    chown deploy:deploy /opt/platform/config/infra.env
+else
+    chown root:root /opt/platform/config/infra.env 2>/dev/null || true
+fi
+
 # 7. Install and Setup Tailscale
 echo "🔗 Configuring system identity and security..."
 
