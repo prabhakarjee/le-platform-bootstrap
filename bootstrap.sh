@@ -71,7 +71,11 @@ export BW_CLIENTID="$BW_CLIENTID"
 export BW_CLIENTSECRET="$BW_CLIENTSECRET"
 EOF
 chmod 600 /opt/platform/config/bw.identity
-chown root:root /opt/platform/config/bw.identity 2>/dev/null || true
+if id "deploy" &>/dev/null; then
+    chown deploy:deploy /opt/platform/config/bw.identity
+else
+    chown root:root /opt/platform/config/bw.identity 2>/dev/null || true
+fi
 
 # 1. Update OS and Install Core Tools
 echo "📦 Updating OS and installing core tools..."
